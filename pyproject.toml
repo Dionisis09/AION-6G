@@ -19,3 +19,7 @@ dependencies = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = [
+  "docker: requires the isolated AION-6G Docker Compose project",
+  "kubernetes: requires the isolated aion-6g-cluster kind cluster",
+]

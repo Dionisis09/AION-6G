@@ -1,171 +1,168 @@
 # AION-6G
 
-AION-6G is an AI-native, 6G-oriented experimental intent and resource orchestration testbed for Cloud–Edge systems.
+AION-6G is an AI-native, 6G-oriented experimental intent and resource orchestration testbed for Cloud-Edge systems.
 
-This project is not a real telecom deployment, real operator network, or production 6G system. It is an experimental research and portfolio project for demonstrating intent-driven placement, bounded workload execution, telemetry-based decision making, and evidence reporting for Cloud–Edge scenarios.
+It is not a real telecom deployment, operator network, radio-access implementation, or production 6G platform. The project demonstrates intent-driven placement, bounded workload execution, telemetry-aware decisions, truthful runtime verification, fallback behavior, and reproducible evidence generation in a controlled environment.
 
-## Project overview
+## What the system does
 
-The system accepts a natural-language service requirement, parses it into a structured service intent and SLA, evaluates candidate execution targets, selects a target using deterministic placement logic, executes a safe workload, verifies the result, and records structured evidence. The implementation supports two execution targets:
+1. Accepts a natural-language service request.
+2. Parses it into a validated service intent and SLA.
+3. Collects local and Kubernetes telemetry.
+4. Evaluates candidate eligibility and deterministic placement scores.
+5. Executes an allowlisted bounded workload on the selected worker.
+6. Verifies runtime identity, checksum, metadata, and SLA conditions.
+7. Persists structured JSON evidence and experiment summaries.
 
-- local-edge
-- kubernetes-edge
+Supported execution targets:
 
-## Motivation
+- `local-edge`
+- `kubernetes-edge`
 
-The project is designed for university research applications, technical portfolio use, and live demonstrations of AI-native orchestration concepts in a controlled environment. It emphasizes clarity, transparency, and evidence-based experimentation rather than claims of real telecom infrastructure.
+Supported placement policies:
 
-## Accurate positioning
-
-AION-6G is best described as:
-
-> An AI-native, 6G-oriented experimental intent and resource orchestration testbed for Cloud–Edge systems.
-
-It does not claim real 6G deployment, real radio measurements, real network slicing, or production readiness.
+- `always-local`
+- `always-kubernetes`
+- `adaptive`
 
 ## Architecture
 
 ```mermaid
 flowchart TD
     A[User request] --> B[Intent parser]
-    B --> C[Structured SLA]
-    C --> D[Telemetry collection]
+    B --> C[Validated service intent and SLA]
+    C --> D[Local and Kubernetes telemetry]
     D --> E[Eligibility evaluation]
-    E --> F[Placement policy]
-    F --> G[Local or Kubernetes execution]
-    G --> H[SLA verification]
-    H --> I[Evidence report]
+    E --> F[Deterministic placement]
+    F --> G[Local, Docker, or Kubernetes worker]
+    G --> H[Checksum, identity, metadata, and SLA verification]
+    H --> I[Structured evidence]
 ```
 
 ## Features
 
-- Deterministic parsing of natural-language requirements
-- Structured Pydantic intent validation
-- Telemetry collection for local and Kubernetes targets
-- Candidate eligibility evaluation and deterministic scoring
-- Safe bounded workload execution
-- SLA verification and one-time fallback
-- Lightweight FastAPI dashboard
-- Timestamped JSON result artifacts
-- Optional LLM-assisted intent parsing path that is disabled by default
+- Deterministic natural-language intent parsing
+- Strict Pydantic input and SLA validation
+- Three experimental service profiles: `critical-control`, `immersive-xr`, and `massive-iot`
+- Local, Docker, and Kubernetes worker identities
+- Telemetry provenance labels for measured, emulated, controlled, and unavailable values
+- Deterministic eligibility filtering and placement scoring
+- Allowlisted workloads with bounded parameters and request timeouts
+- One-retry cross-runtime fallback without fabricated success
+- FastAPI API and lightweight dashboard
+- Timestamped JSON evidence and CSV/JSON experiment summaries
+- Unit, Docker integration, and Kubernetes integration tests
 
-## Quick start without Kubernetes
+## Requirements
 
-1. Create and activate a Python 3.11 virtual environment.
-2. Install dependencies:
-   ```powershell
-   py -3.11 -m pip install -r requirements.txt
-   ```
-3. Start the API:
-   ```powershell
-   py -3.11 -m uvicorn app.main:app --host 127.0.0.1 --port 8000
-   ```
-4. Open the dashboard at http://127.0.0.1:8000/.
+- Python 3.11 or newer
+- Docker Desktop for Docker validation
+- `kind` and `kubectl` for Kubernetes validation
 
-## Docker setup
+## Quick start
 
 ```powershell
-docker compose build
-docker compose up
+py -3.11 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
-The app will be available at http://127.0.0.1:8000/.
+Open <http://127.0.0.1:8000/>.
 
-## Kubernetes kind setup
+## Docker
 
 ```powershell
-./scripts/create_cluster.ps1
-./scripts/deploy_kubernetes.ps1
+docker compose -p aion6g build
+docker compose -p aion6g up -d
+docker compose -p aion6g ps
 ```
 
-## Example intent
+## Kubernetes with kind
 
-```text
-Deploy a critical-control workload with latency below 20 ms and CPU below 70%.
+```powershell
+.\scripts\create_cluster.ps1
+.\scripts\deploy_kubernetes.ps1
+kubectl --context kind-aion-6g-cluster port-forward -n aion-6g service/aion6g-worker 8002:8001
 ```
 
-## Example orchestration response
-
-```json
-{
-  "intent": {
-    "service_type": "critical-control",
-    "max_latency_ms": 20,
-    "max_cpu_percent": 70,
-    "priority": "reliability"
-  },
-  "selected_target": "local-edge",
-  "verification": {
-    "status": "PASSED"
-  }
-}
-```
-
-## Service profiles
-
-The project ships with three experimental profiles:
-
-- critical-control
-- immersive-xr
-- massive-iot
-
-These are 6G-inspired service profiles and are not official standardized 6G slice definitions.
-
-## Placement policies
-
-- always-local
-- always-kubernetes
-- adaptive
-
-## Experiment scenarios
-
-- baseline
-- local-high-cpu
-- kubernetes-high-latency
-- packet-loss-degradation
-- selected-target-failure
-- no-eligible-target
+The Kubernetes deployment is isolated in cluster `aion-6g-cluster` and namespace `aion-6g`.
 
 ## Testing
 
-Run the test suite:
+Standard test suite:
 
 ```powershell
-py -3.11 -m pytest -q
+py -3.11 -m pytest -m "not docker and not kubernetes" -ra
 ```
 
-## Security
+Docker integration test, with the Compose stack running:
 
-- Strict Pydantic validation
-- Workload allowlist
-- Bounded numeric parameters
-- No arbitrary shell execution through the API
-- No secrets committed to the repository
-- Localhost-only defaults
+```powershell
+$env:AION_RUN_DOCKER_TESTS='1'
+py -3.11 -m pytest -m docker -ra
+```
+
+Kubernetes integration test, with the kind worker deployed and port-forwarded:
+
+```powershell
+$env:AION_RUN_KUBERNETES_TESTS='1'
+py -3.11 -m pytest -m kubernetes -ra
+```
+
+## Experiments and evidence
+
+```powershell
+python scripts/run_full_validation.py
+python scripts/generate_experiment_evidence.py
+python scripts/generate_charts.py
+python scripts/build_final_artifacts.py
+```
+
+Runtime evidence is generated under `results/`. Generated JSON, CSV, and PNG files are intentionally ignored by Git because they are environment-specific and reproducible.
+
+## Documentation
+
+- [Architecture](docs/architecture.md)
+- [Experimental methodology](docs/experimental-methodology.md)
+- [Results guide](docs/results-guide.md)
+- [Limitations](docs/limitations.md)
+- [Final validation summary](docs/final-validation.md)
+- [Extended technical evidence report](docs/AION-6G_Technical_Report_Extended_Evidence.docx)
+
+## Security boundaries
+
+- No arbitrary shell-execution API
+- Strict workload allowlist and numeric parameter bounds
+- Fixed Kubernetes context, namespace, deployment, and container configuration
+- HTTP and subprocess timeouts
+- Internally generated evidence paths
+- Localhost-only worker endpoints by default
+- No credentials stored in manifests or the tracked `.env.example`
 
 ## Limitations
 
-- This is an experimental testbed, not a real 6G deployment.
-- Kubernetes telemetry depends on the local environment and metrics-server availability.
-- The dashboard is intentionally lightweight.
-
-## Future work
-
-- Add richer telemetry integrations
-- Add more sophisticated placement heuristics
-- Add stronger Kubernetes integration and cluster-specific tests
-- Add richer experiment summaries and charts
+- This is an experimental Cloud-Edge testbed, not production telecom infrastructure.
+- Local, Docker, and kind runtimes can share the same physical host.
+- Kubernetes CPU and RAM telemetry requires a working Metrics API.
+- Scenario jitter, packet loss, and bandwidth values are emulated unless explicitly reported otherwise.
+- Localhost and port-forwarded HTTP latency are not radio or WAN measurements.
 
 ## Repository structure
 
 ```text
 AION-6G/
-├── app/
-├── profiles/
-├── deployments/
-├── scripts/
-├── tests/
-├── docs/
-├── results/
-└── README.md
+|-- app/          Application, orchestration, telemetry, and workloads
+|-- deployments/ Docker and Kubernetes deployment files
+|-- docs/         Architecture, validation, security, and final report
+|-- profiles/     Experimental service profiles
+|-- scripts/      Setup, validation, evidence, and experiment helpers
+|-- tests/        Unit and opt-in integration tests
+|-- .env.example  Safe configuration template
+|-- pyproject.toml
+`-- README.md
 ```
+
+## License
+
+See [LICENSE](LICENSE).
