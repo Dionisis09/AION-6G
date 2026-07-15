@@ -1,171 +1,81 @@
+
 # AION-6G
 
-AION-6G is an AI-native, 6G-oriented experimental intent and resource orchestration testbed for Cloud–Edge systems.
+**AI-Native Intent Orchestrator for Cloud–Edge Systems**
 
-This project is not a real telecom deployment, real operator network, or production 6G system. It is an experimental research and portfolio project for demonstrating intent-driven placement, bounded workload execution, telemetry-based decision making, and evidence reporting for Cloud–Edge scenarios.
+AION-6G is an experimental, AI-native and 6G-oriented intent orchestration
+testbed for Cloud–Edge systems.
 
-## Project overview
+It accepts natural-language service requirements, converts them into structured
+SLA constraints, evaluates local and Kubernetes execution targets, selects a
+target through deterministic placement logic, runs a bounded workload, verifies
+the result, and stores machine-readable evidence.
 
-The system accepts a natural-language service requirement, parses it into a structured service intent and SLA, evaluates candidate execution targets, selects a target using deterministic placement logic, executes a safe workload, verifies the result, and records structured evidence. The implementation supports two execution targets:
+> AION-6G is not a real 6G radio deployment, network-slicing platform,
+> Open RAN implementation, operator network, or production telecom system.
+> The term “6G-oriented” refers to the intent-driven, SLA-aware Cloud–Edge
+> research context.
 
-- local-edge
-- kubernetes-edge
+## Current validation status
 
-## Motivation
+**Engineering classification:** `READY FOR PRIVATE REVIEW`
 
-The project is designed for university research applications, technical portfolio use, and live demonstrations of AI-native orchestration concepts in a controlled environment. It emphasizes clarity, transparency, and evidence-based experimentation rather than claims of real telecom infrastructure.
+| Capability                         | Status      |
+| ---------------------------------- | ----------- |
+| Local FastAPI runtime              | VERIFIED    |
+| Local bounded workload execution   | VERIFIED    |
+| Docker runtime                     | VERIFIED    |
+| Docker restart recovery            | VERIFIED    |
+| Isolated kind cluster              | VERIFIED    |
+| Real Kubernetes worker pod         | VERIFIED    |
+| Real Kubernetes workload execution | VERIFIED    |
+| Always-local placement             | VERIFIED    |
+| Always-kubernetes placement        | VERIFIED    |
+| Adaptive placement                 | VERIFIED    |
+| Adaptive local selection           | VERIFIED    |
+| Adaptive Kubernetes selection      | VERIFIED    |
+| Local-to-Kubernetes fallback       | VERIFIED    |
+| Three service profiles             | VERIFIED    |
+| Six validation scenarios           | FUNCTIONAL  |
+| Security scan                      | VERIFIED    |
+| Kubernetes CPU/RAM telemetry       | UNAVAILABLE |
+| Jitter, packet loss and bandwidth  | EMULATED    |
 
-## Accurate positioning
+## What the project does
 
-AION-6G is best described as:
+The orchestration flow is:
 
-> An AI-native, 6G-oriented experimental intent and resource orchestration testbed for Cloud–Edge systems.
+1. Receive a natural-language service request.
+2. Parse it into a structured service intent and SLA.
+3. Collect telemetry from the available targets.
+4. Reject targets that do not satisfy eligibility requirements.
+5. Score the remaining candidates.
+6. Select a local or Kubernetes target.
+7. Execute an allowlisted bounded workload.
+8. Verify the checksum, runtime identity, metadata and SLA result.
+9. Retry once on another runtime when fallback is allowed.
+10. Store the final result as structured evidence.
 
-It does not claim real 6G deployment, real radio measurements, real network slicing, or production readiness.
+Placement is deterministic. An optional LLM-assisted parsing path may help
+interpret an intent, but it does not directly override the placement decision.
 
 ## Architecture
 
 ```mermaid
 flowchart TD
-    A[User request] --> B[Intent parser]
-    B --> C[Structured SLA]
-    C --> D[Telemetry collection]
+    A[Natural-language request] --> B[Intent parser]
+    B --> C[Structured service intent and SLA]
+    C --> D[Local and Kubernetes telemetry]
     D --> E[Eligibility evaluation]
-    E --> F[Placement policy]
-    F --> G[Local or Kubernetes execution]
-    G --> H[SLA verification]
-    H --> I[Evidence report]
-```
+    E --> F[Deterministic placement policy]
 
-## Features
+    F --> G1[Local worker]
+    F --> G2[Kubernetes worker pod]
 
-- Deterministic parsing of natural-language requirements
-- Structured Pydantic intent validation
-- Telemetry collection for local and Kubernetes targets
-- Candidate eligibility evaluation and deterministic scoring
-- Safe bounded workload execution
-- SLA verification and one-time fallback
-- Lightweight FastAPI dashboard
-- Timestamped JSON result artifacts
-- Optional LLM-assisted intent parsing path that is disabled by default
+    G1 --> H[Bounded workload execution]
+    G2 --> H
 
-## Quick start without Kubernetes
-
-1. Create and activate a Python 3.11 virtual environment.
-2. Install dependencies:
-   ```powershell
-   py -3.11 -m pip install -r requirements.txt
-   ```
-3. Start the API:
-   ```powershell
-   py -3.11 -m uvicorn app.main:app --host 127.0.0.1 --port 8000
-   ```
-4. Open the dashboard at http://127.0.0.1:8000/.
-
-## Docker setup
-
-```powershell
-docker compose build
-docker compose up
-```
-
-The app will be available at http://127.0.0.1:8000/.
-
-## Kubernetes kind setup
-
-```powershell
-./scripts/create_cluster.ps1
-./scripts/deploy_kubernetes.ps1
-```
-
-## Example intent
-
-```text
-Deploy a critical-control workload with latency below 20 ms and CPU below 70%.
-```
-
-## Example orchestration response
-
-```json
-{
-  "intent": {
-    "service_type": "critical-control",
-    "max_latency_ms": 20,
-    "max_cpu_percent": 70,
-    "priority": "reliability"
-  },
-  "selected_target": "local-edge",
-  "verification": {
-    "status": "PASSED"
-  }
-}
-```
-
-## Service profiles
-
-The project ships with three experimental profiles:
-
-- critical-control
-- immersive-xr
-- massive-iot
-
-These are 6G-inspired service profiles and are not official standardized 6G slice definitions.
-
-## Placement policies
-
-- always-local
-- always-kubernetes
-- adaptive
-
-## Experiment scenarios
-
-- baseline
-- local-high-cpu
-- kubernetes-high-latency
-- packet-loss-degradation
-- selected-target-failure
-- no-eligible-target
-
-## Testing
-
-Run the test suite:
-
-```powershell
-py -3.11 -m pytest -q
-```
-
-## Security
-
-- Strict Pydantic validation
-- Workload allowlist
-- Bounded numeric parameters
-- No arbitrary shell execution through the API
-- No secrets committed to the repository
-- Localhost-only defaults
-
-## Limitations
-
-- This is an experimental testbed, not a real 6G deployment.
-- Kubernetes telemetry depends on the local environment and metrics-server availability.
-- The dashboard is intentionally lightweight.
-
-## Future work
-
-- Add richer telemetry integrations
-- Add more sophisticated placement heuristics
-- Add stronger Kubernetes integration and cluster-specific tests
-- Add richer experiment summaries and charts
-
-## Repository structure
-
-```text
-AION-6G/
-├── app/
-├── profiles/
-├── deployments/
-├── scripts/
-├── tests/
-├── docs/
-├── results/
-└── README.md
+    H --> I[Checksum and SLA verification]
+    I --> J[Evidence JSON and experiment results]
+    I --> K[One-time fallback when allowed]
 ```
