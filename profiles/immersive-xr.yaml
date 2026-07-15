@@ -1,0 +1,12 @@
+service_type: immersive-xr
+purpose: Latency-sensitive interactive workload
+defaults:
+  max_latency_ms: 15
+  max_jitter_ms: 4
+  max_packet_loss_percent: 0.5
+  min_bandwidth_mbps: 50
+  max_cpu_percent: 75
+  priority: latency
+notes:
+  experimental: true
+  not_standardized_6g_slice: true

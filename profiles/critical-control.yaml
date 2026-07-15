@@ -1,0 +1,11 @@
+service_type: critical-control
+purpose: Reliability-sensitive control workload
+defaults:
+  max_latency_ms: 20
+  max_jitter_ms: 2
+  max_packet_loss_percent: 0.1
+  max_cpu_percent: 70
+  priority: reliability
+notes:
+  experimental: true
+  not_standardized_6g_slice: true

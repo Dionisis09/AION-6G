@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aion-6g-worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: aion-6g-worker
+  template:
+    metadata:
+      labels:
+        app: aion-6g-worker
+    spec:
+      containers:
+        - name: worker
+          image: python:3.11-slim
+          command: ["python", "-m", "http.server", "8002"]
+          ports:
+            - containerPort: 8002
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: aion-6g-worker
+spec:
+  selector:
+    app: aion-6g-worker
+  ports:
+    - port: 8002
+      targetPort: 8002
