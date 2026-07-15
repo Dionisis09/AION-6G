@@ -15,4 +15,11 @@ def build_emulated_network_profile(scenario: str) -> dict[str, Any]:
     }
     if scenario not in profiles:
         raise ValueError(f"Unsupported scenario: {scenario}")
-    return deepcopy(profiles[scenario])
+    result = deepcopy(profiles[scenario])
+    result["metric_sources"] = {
+        "additional_latency_ms": "EMULATED",
+        "jitter_ms": "EMULATED",
+        "packet_loss_percent": "EMULATED",
+        "bandwidth_limit_mbps": "EMULATED",
+    }
+    return result
