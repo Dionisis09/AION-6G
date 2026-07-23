@@ -1,7 +1,7 @@
 [project]
 name = "aion-6g"
 version = "0.1.0"
-description = "AI-native intent orchestrator for cloud-edge systems"
+description = "Intent-driven orchestrator for cloud-edge systems"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -19,3 +19,7 @@ dependencies = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = [
+  "docker: requires the isolated AION-6G Docker Compose project",
+  "kubernetes: requires the isolated aion-6g-cluster kind cluster",
+]

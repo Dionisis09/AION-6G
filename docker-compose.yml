@@ -1,10 +1,38 @@
 services:
-  aion-6g:
-    build: .
-    container_name: aion-6g-app
+  aion6g-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: aion6g-app
     ports:
       - "8000:8000"
     environment:
-      - LOCAL_WORKER_URL=http://aion-6g:8000
-      - KUBERNETES_WORKER_URL=http://kubernetes-edge:8002
-    command: ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+      LOCAL_WORKER_URL: http://aion6g-local-worker:8001
+      KUBERNETES_WORKER_URL: http://host.docker.internal:8002
+      KUBERNETES_CLUSTER_NAME: aion-6g-cluster
+      KUBERNETES_NAMESPACE: aion-6g
+    volumes:
+      - ./results:/app/results
+    depends_on:
+      aion6g-local-worker:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://127.0.0.1:8000/health', timeout=2).raise_for_status()"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  aion6g-local-worker:
+    build:
+      context: .
+      dockerfile: deployments/docker/worker.Dockerfile
+    container_name: aion6g-local-worker
+    ports:
+      - "8001:8001"
+    environment:
+      AION_EXECUTION_MODE: DOCKER
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://127.0.0.1:8001/health', timeout=2).raise_for_status()"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
