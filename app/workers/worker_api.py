@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+
 from fastapi import FastAPI
 from pydantic import BaseModel, Field
 
@@ -16,10 +18,20 @@ class WorkloadRequest(BaseModel):
 
 @app.get("/health")
 def health() -> dict:
-    return {"status": "ok"}
+    return {"status": "ok", "execution_mode": os.getenv("AION_EXECUTION_MODE", "LOCAL")}
 
 
 @app.post("/execute")
 def execute(payload: WorkloadRequest) -> dict:
     result = execute_workload(payload.workload_type, iterations=payload.iterations, payload_size=payload.payload_size)
-    return {"status": "ok", **result}
+    return {
+        "status": "ok",
+        "runtime_execution_mode": os.getenv("AION_EXECUTION_MODE", "LOCAL"),
+        "cluster_name": os.getenv("AION_CLUSTER_NAME"),
+        "namespace": os.getenv("AION_NAMESPACE"),
+        "deployment": os.getenv("AION_DEPLOYMENT"),
+        "pod_name": os.getenv("AION_POD_NAME"),
+        "pod_uid": os.getenv("AION_POD_UID"),
+        "container_name": os.getenv("AION_CONTAINER_NAME"),
+        **result,
+    }

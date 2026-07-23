@@ -1,9 +1,8 @@
-
 # AION-6G
 
-**AI-Native Intent Orchestrator for Cloud–Edge Systems**
+**Intent-Driven Orchestrator for Cloud–Edge Systems**
 
-AION-6G is an experimental, AI-native and 6G-oriented intent orchestration testbed for Cloud–Edge systems.
+AION-6G is an experimental, intent-driven and 6G-oriented orchestration testbed for Cloud–Edge systems.
 
 The system accepts natural-language service requirements, converts them into structured SLA constraints, evaluates local and Kubernetes execution targets, selects a target through deterministic placement logic, executes a bounded workload, verifies the result, and stores machine-readable evidence.
 
@@ -12,9 +11,9 @@ The system accepts natural-language service requirements, converts them into str
 
 ## Current validation status
 
-**Engineering classification:** `READY FOR PRIVATE REVIEW`
+**Engineering classification:** `VALIDATED EXPERIMENTAL PROTOTYPE`
 
-The project has been validated across local, Docker, and Kubernetes execution paths.
+The implementation was revalidated on **2026-07-18** across local, Docker, host-to-Kubernetes, and Dockerized API-to-Kubernetes execution paths. The status below describes a controlled single-machine development environment, not a production deployment.
 
 | Capability                         | Status      |
 | ---------------------------------- | ----------- |
@@ -37,7 +36,7 @@ The project has been validated across local, Docker, and Kubernetes execution pa
 | Kubernetes CPU/RAM telemetry       | UNAVAILABLE |
 | Jitter, packet loss and bandwidth  | EMULATED    |
 
-The project is suitable for technical and research review, but it is not production-ready.
+The project is suitable for technical and research review, but it is not production-ready. Generated runtime evidence under `results/` is environment-specific and intentionally ignored by Git; the tracked validation summaries record the reproducible procedure and classification.
 
 ## What the project does
 
@@ -54,7 +53,7 @@ The main orchestration flow is:
 9. Retry once on another runtime when fallback is permitted.
 10. Store the final result as structured evidence.
 
-Placement is deterministic. An optional LLM-assisted parsing path may help interpret an intent, but it does not directly override the placement decision.
+Intent parsing and placement are deterministic.
 
 ## Architecture
 
@@ -127,14 +126,14 @@ Docker validation includes:
 
 ### Kubernetes runtime
 
-The Kubernetes worker runs in an isolated local kind cluster.
+The Kubernetes worker runs in the currently selected local Kubernetes context. Both Docker Desktop Kubernetes and an isolated local kind cluster are supported.
 
 Validated configuration:
 
 | Resource        | Value                     |
 | --------------- | ------------------------- |
 | Cluster         | `aion-6g-cluster`       |
-| Context         | `kind-aion-6g-cluster`  |
+| Context         | Current `kubectl` context |
 | Namespace       | `aion-6g`               |
 | Deployment      | `aion6g-worker`         |
 | Service         | `aion6g-worker`         |
@@ -151,13 +150,13 @@ A Kubernetes result cannot be marked as successful unless the orchestrator recei
 - pod name
 - pod UID
 - container
-- ready replicas
-- restart count
 - worker endpoint
 - `KUBERNETES` runtime identity
 - workload checksum
 
 This prevents local or simulated execution from being presented as real Kubernetes execution.
+
+When the orchestrator has `kubectl` access, it also records desired/ready replicas and pod restart count. The Dockerized API intentionally does not bundle cluster credentials or `kubectl`; in that path it measures the worker endpoint first, marks Kubernetes resource telemetry as `UNAVAILABLE`, and accepts success only after the worker response supplies the required pod identity and checksum. Missing values are never replaced with fabricated values.
 
 ## Truthful execution modes
 
@@ -315,9 +314,11 @@ This is considered correct behavior, not a failed implementation.
 
 | Result                       |     Value |
 | ---------------------------- | --------: |
-| Standard tests               | 36 passed |
-| Docker integration tests     |  1 passed |
-| Kubernetes integration tests |  1 passed |
+| Complete test suite          | 42 passed |
+| Standard tests               | 39 passed |
+| Docker worker integration    |  1 passed |
+| Host-to-Kubernetes integration | 1 passed |
+| Docker API-to-Kubernetes regression | 1 passed |
 | Docker containers            | 2 healthy |
 | Kubernetes ready replicas    |       1/1 |
 | Kubernetes pod restarts      |         0 |
@@ -329,7 +330,7 @@ This is considered correct behavior, not a failed implementation.
 | Adaptive runs                |        20 |
 | Gitleaks findings            |         0 |
 
-The four failed experiment rows were intentionally preserved. They represent cases where execution completed but the requested SLA was not satisfied.
+The four failed experiment rows were intentionally preserved. They represent cases where execution completed but the requested SLA was not satisfied. The 60-run dataset is a reproducible validation snapshot, not a continuously updated production metric.
 
 ## Experiment dataset
 
@@ -367,11 +368,11 @@ Failed rows remain in the dataset and are included in the statistics.
 
 | Metric            | Local                   | Kubernetes  |
 | ----------------- | ----------------------- | ----------- |
-| CPU               | MEASURED with`psutil` | UNAVAILABLE |
-| RAM               | MEASURED with`psutil` | UNAVAILABLE |
+| CPU               | MEASURED with `psutil` | UNAVAILABLE |
+| RAM               | MEASURED with `psutil` | UNAVAILABLE |
 | HTTP latency      | MEASURED                | MEASURED    |
-| Ready replicas    | Not applicable          | MEASURED    |
-| Pod restart count | Not applicable          | MEASURED    |
+| Ready replicas    | Not applicable          | MEASURED with `kubectl`; otherwise UNAVAILABLE |
+| Pod restart count | Not applicable          | MEASURED with `kubectl`; otherwise UNAVAILABLE |
 | Jitter            | EMULATED                | EMULATED    |
 | Packet loss       | EMULATED                | EMULATED    |
 | Bandwidth         | EMULATED                | EMULATED    |
@@ -474,7 +475,24 @@ View recent logs:
 docker compose -p aion6g logs --no-color --tail 100
 ```
 
-## Kubernetes kind setup
+## Kubernetes setup
+
+The deployment and port-forward scripts use `kubectl config current-context` by default. Confirm the selected cluster before deploying:
+
+```powershell
+kubectl config current-context
+kubectl get nodes
+```
+
+With Docker Desktop Kubernetes, the current context is normally `docker-desktop`. Deploy to the current context with:
+
+```powershell
+.\scripts\deploy_kubernetes.ps1
+```
+
+You may also pass an explicit context with `-Context`. For kind compatibility, pass `-ClusterName`; the script derives the conventional `kind-<cluster-name>` context only from that explicit argument.
+
+### Optional kind cluster
 
 Create the isolated cluster:
 
@@ -495,23 +513,19 @@ kind load docker-image aion6g-worker:validation `
 Apply the Kubernetes resources:
 
 ```powershell
-kubectl --context kind-aion-6g-cluster apply `
-  -f deployments/kubernetes/
+.\scripts\deploy_kubernetes.ps1
 ```
 
 Check deployment, pods and services:
 
 ```powershell
-kubectl --context kind-aion-6g-cluster `
-  get deployments,pods,services `
-  -n aion-6g
+kubectl get deployments,pods,services -n aion-6g
 ```
 
 Wait for the deployment:
 
 ```powershell
-kubectl --context kind-aion-6g-cluster `
-  rollout status deployment/aion6g-worker `
+kubectl rollout status deployment/aion6g-worker `
   -n aion-6g `
   --timeout=180s
 ```
@@ -519,12 +533,18 @@ kubectl --context kind-aion-6g-cluster `
 Start port forwarding:
 
 ```powershell
-kubectl --context kind-aion-6g-cluster `
-  port-forward `
-  -n aion-6g `
-  service/aion6g-worker `
-  8002:8001
+.\scripts\port_forward_kubernetes.ps1
 ```
+
+The default listener is localhost-only and is appropriate when the orchestrator runs directly on the host. Port `8002` is preferred; if it is already occupied and `-LocalPort` was not supplied, the script selects the next available port and prints the exact health URL. An explicitly requested occupied port fails with a clear error instead of silently changing ports.
+
+When the orchestrator API runs through Docker Compose, use a separate PowerShell window:
+
+```powershell
+.\scripts\port_forward_kubernetes.ps1 -ForDocker
+```
+
+`-ForDocker` is required because `aion6g-app` reaches the host through `host.docker.internal`. The script emits a warning because the temporary port-forward listens on all host interfaces. Use it only on a trusted development machine and stop it with `Ctrl+C` after validation.
 
 ## Validation commands
 
@@ -560,10 +580,23 @@ $env:AION_RUN_KUBERNETES_TESTS="1"
 pytest -m kubernetes -ra
 ```
 
+Run the Dockerized API-to-Kubernetes regression test after starting the `-ForDocker` port-forward:
+
+```powershell
+$env:AION_RUN_DOCKER_KUBERNETES_TESTS="1"
+pytest tests/integration/test_docker_to_kubernetes_runtime.py -ra
+```
+
 Compile the Python source:
 
 ```powershell
 python -m compileall app scripts tests
+```
+
+Run the reproducible repository security scan:
+
+```powershell
+python scripts/run_security_scan.py
 ```
 
 ## Security
@@ -587,7 +620,7 @@ Security controls include:
 - no public Kubernetes `LoadBalancer`
 - no credentials inside Kubernetes manifests
 - ignored local `.env` file
-- empty `.env.example`
+- safe placeholder values in `.env.example`
 
 Security scan commands:
 
@@ -598,45 +631,30 @@ gitleaks dir . --redact=100 --report-format json
 
 ## Evidence and reports
 
-Main validation artifacts:
+Tracked validation artifacts:
 
 - [Final validation report](docs/final-validation.md)
-- [Final validation JSON](results/final_validation.json)
-- [Docker validation](results/docker_validation.json)
-- [Kubernetes validation](results/kubernetes_validation.json)
-- [Kubernetes workload evidence](results/kubernetes_edge_success.json)
-- [Successful cross-runtime fallback](results/fallback_real_success.json)
-- [Failed cross-runtime fallback](results/fallback_real_failure.json)
-- [Experiment summary CSV](results/experiment_summary.csv)
-- [Experiment summary JSON](results/experiment_summary.json)
-- [Experiment statistics](results/experiment_statistics.json)
-- [Security scan](results/security_scan.json)
-- [Full technical report PDF](docs/AION-6G_Technical_Report_Full_Validation.pdf)
+- [Docker validation notes](docs/docker-validation.md)
+- [Kubernetes validation notes](docs/kubernetes-validation.md)
+- [Security scan notes](docs/security-scan.md)
+- [Live demo runbook](docs/demo-script.md)
 
-Additional evidence includes policy, profile and scenario-specific JSON files under the `results/` directory.
+`python scripts/run_full_validation.py` and `python scripts/generate_experiment_evidence.py` regenerate the detailed JSON/CSV evidence under `results/`. Those files are intentionally not linked as GitHub artifacts because the directory is ignored and represents machine-specific runtime output.
 
 ## Repository structure
 
 ```text
 AION-6G/
-├── app/
-│   ├── experiments/
-│   ├── execution/
-│   ├── models/
-│   ├── orchestration/
-│   ├── placement/
-│   ├── telemetry/
-│   └── verification/
-├── deployments/
-│   └── kubernetes/
-├── docs/
-├── profiles/
-├── results/
-├── scripts/
-├── tests/
-├── docker-compose.yml
-├── Dockerfile
-└── README.md
+|-- app/                 API, intent, orchestration, telemetry, workers and workloads
+|-- deployments/         Docker worker image and Kubernetes manifests
+|-- docs/                Demo runbook and validation summaries
+|-- profiles/            Experimental service-profile definitions
+|-- results/             Generated runtime evidence; ignored by Git
+|-- scripts/             Cluster, deployment, validation and evidence helpers
+|-- tests/               Unit and opt-in runtime integration tests
+|-- docker-compose.yml   API plus dedicated Docker worker
+|-- Dockerfile           API image
+`-- README.md
 ```
 
 ## Known limitations
@@ -670,7 +688,6 @@ Planned improvements include:
 - remote and multi-node Cloud–Edge targets
 - larger repeated experiments
 - packet-level network emulation with `tc`, `netem` or equivalent tools
-- optional LLM-assisted intent interpretation
 - stronger authentication and authorization
 - signed or tamper-evident evidence
 - multi-cluster orchestration
@@ -682,7 +699,7 @@ Planned improvements include:
 
 AION-6G should be described as:
 
-> An experimental, AI-native and 6G-oriented intent orchestration testbed for Cloud–Edge systems.
+> An experimental, intent-driven and 6G-oriented orchestration testbed for Cloud–Edge systems.
 
 It should not be described as:
 
@@ -700,6 +717,4 @@ It should not be described as:
 
 ## License
 
-No open-source license has been selected yet.
-
-Until a license is added, the source code remains protected by default copyright rules and may not be reused, redistributed or modified without permission.
+This project is distributed under the [MIT License](LICENSE).

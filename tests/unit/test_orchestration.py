@@ -88,7 +88,7 @@ def test_verify_sla_passes_with_constraints_met():
         "max_cpu_percent": 70,
         "priority": "reliability",
     })
-    result = verify_sla(intent, {"checksum": "abc"}, {"http_latency_ms": 10, "cpu_utilization_percent": 10}, {"packet_loss_percent": 0.05})
+    result = verify_sla(intent, {"status": "ok", "checksum": "abc"}, {"http_latency_ms": 10, "cpu_utilization_percent": 10}, {"packet_loss_percent": 0.05})
     assert result["status"] == "PASSED"
 
 
@@ -101,7 +101,7 @@ def test_verify_sla_fails_on_packet_loss():
         "max_cpu_percent": 70,
         "priority": "reliability",
     })
-    result = verify_sla(intent, {"checksum": "abc"}, {"http_latency_ms": 10, "cpu_utilization_percent": 10}, {"packet_loss_percent": 0.5})
+    result = verify_sla(intent, {"status": "ok", "checksum": "abc"}, {"http_latency_ms": 10, "cpu_utilization_percent": 10}, {"packet_loss_percent": 0.5})
     assert result["status"] == "FAILED"
 
 

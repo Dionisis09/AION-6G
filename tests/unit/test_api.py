@@ -11,6 +11,16 @@ def test_health_endpoint():
     assert response.json()['status'] == 'ok'
 
 
+def test_dashboard_and_javascript_are_served():
+    dashboard = client.get('/')
+    script = client.get('/static/app.js')
+
+    assert dashboard.status_code == 200
+    assert 'AION-6G Intent Orchestrator' in dashboard.text
+    assert script.status_code == 200
+    assert 'async function runOrchestration' in script.text
+
+
 def test_ready_endpoint():
     response = client.get('/ready')
     assert response.status_code == 200

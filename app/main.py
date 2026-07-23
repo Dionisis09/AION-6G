@@ -6,14 +6,22 @@ from typing import Any
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from app.config import ROOT_DIR
+from app.experiments.summary import build_experiment_summary
 from app.intent.deterministic_parser import parse_intent
-from app.models.intent import ServiceIntent
 from app.orchestration.orchestrator import orchestrator
+from app.telemetry.kubernetes_collector import collect_kubernetes_telemetry
+from app.telemetry.local_collector import collect_local_telemetry
 
 app = FastAPI(title="AION-6G", version="0.1.0")
+app.mount(
+    "/static",
+    StaticFiles(directory=ROOT_DIR / "app" / "web" / "static"),
+    name="static",
+)
 
 
 class IntentRequest(BaseModel):
@@ -88,7 +96,10 @@ def targets() -> list[dict[str, Any]]:
 
 @app.get("/api/v1/telemetry")
 def telemetry() -> list[dict[str, Any]]:
-    return [{"target": "local-edge", "status": "ok"}, {"target": "kubernetes-edge", "status": "ok"}]
+    return [
+        collect_local_telemetry("local-edge").model_dump(),
+        collect_kubernetes_telemetry("kubernetes-edge").model_dump(),
+    ]
 
 
 @app.post("/api/v1/parse-intent")
@@ -110,6 +121,25 @@ def run_experiment(payload: ExperimentRequest) -> dict[str, Any]:
             for _ in range(payload.runs_per_scenario):
                 result = orchestrator.orchestrate("Deploy a critical-control workload with latency below 20 ms and CPU below 70%", policy=policy, scenario=scenario)
                 results.append(result)
+    build_experiment_summary([
+        {
+            "policy": item.get("policy", "adaptive"),
+            "service_profile": "critical-control",
+            "scenario": item.get("scenario", "baseline"),
+            "selected_target": item.get("selected_target"),
+            "execution_success": item.get("verification", {}).get("status") == "PASSED",
+            "sla_status": item.get("verification", {}).get("status"),
+            "fallback_used": bool(item.get("fallback", {}).get("used")),
+            "orchestration_time_ms": item.get("orchestration_time_ms"),
+            "execution_mode": item.get("execution_mode"),
+            "jitter_ms": item.get("network_profile", {}).get("jitter_ms"),
+            "packet_loss_percent": item.get("network_profile", {}).get("packet_loss_percent"),
+            "bandwidth_mbps": item.get("network_profile", {}).get("bandwidth_limit_mbps"),
+            "network_data_type": item.get("network_data_type"),
+            "rejection_reasons": [],
+        }
+        for item in results
+    ], ROOT_DIR / "results")
     return {"count": len(results), "results": results}
 
 

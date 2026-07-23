@@ -12,12 +12,16 @@ def score_candidate(intent: ServiceIntent, telemetry: Telemetry) -> float:
         latency_component = max(0.0, 1.0 - (telemetry.http_latency_ms / (intent.max_latency_ms * 2)))
 
     cpu_component = 1.0
-    if telemetry.cpu_utilization_percent is not None and intent.max_cpu_percent is not None:
-        cpu_component = max(0.0, 1.0 - (telemetry.cpu_utilization_percent / intent.max_cpu_percent))
+    if intent.max_cpu_percent is not None:
+        cpu_component = 0.5 if telemetry.cpu_utilization_percent is None else max(
+            0.0, 1.0 - (telemetry.cpu_utilization_percent / intent.max_cpu_percent)
+        )
 
     memory_component = 1.0
-    if telemetry.memory_utilization_percent is not None and intent.max_memory_percent is not None:
-        memory_component = max(0.0, 1.0 - (telemetry.memory_utilization_percent / intent.max_memory_percent))
+    if intent.max_memory_percent is not None:
+        memory_component = 0.5 if telemetry.memory_utilization_percent is None else max(
+            0.0, 1.0 - (telemetry.memory_utilization_percent / intent.max_memory_percent)
+        )
 
     reliability_component = 1.0 if telemetry.health else 0.0
     readiness_component = 1.0 if telemetry.endpoint_ready else 0.0

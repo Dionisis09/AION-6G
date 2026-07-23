@@ -7,8 +7,18 @@ def verify_sla(intent: ServiceIntent, execution: dict, telemetry: dict, network_
     checks = []
     status = "PASSED"
 
-    if execution.get("checksum"):
+    if execution.get("status") != "ok" or not execution.get("checksum"):
+        status = "FAILED"
+        checks.append("bounded workload did not return a verifiable checksum")
+    else:
         checks.append("workload checksum produced")
+
+    if execution.get("execution_mode") == "KUBERNETES":
+        required = ("cluster_name", "namespace", "deployment", "pod_name", "pod_uid", "container_name")
+        missing = [name for name in required if not execution.get(name)]
+        if missing:
+            status = "FAILED"
+            checks.append(f"missing Kubernetes evidence: {', '.join(missing)}")
 
     if intent.max_latency_ms is not None and telemetry.get("http_latency_ms") is not None and telemetry["http_latency_ms"] > intent.max_latency_ms:
         status = "FAILED"
